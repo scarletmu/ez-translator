@@ -1,0 +1,29 @@
+import type { ErrorCode } from '@/errors';
+
+export enum MessageType {
+  TRANSLATE_SELECTION = 'TRANSLATE_SELECTION',
+  TRANSLATE_PASTE = 'TRANSLATE_PASTE',
+  START_SCREENSHOT_TRANSLATE = 'START_SCREENSHOT_TRANSLATE',
+  SUBMIT_SCREENSHOT_REGION = 'SUBMIT_SCREENSHOT_REGION',
+  ENTER_SCREENSHOT_MODE = 'ENTER_SCREENSHOT_MODE',
+  VALIDATE_TEXT_TRANSLATE = 'VALIDATE_TEXT_TRANSLATE',
+  VALIDATE_SCREENSHOT_DIRECT = 'VALIDATE_SCREENSHOT_DIRECT',
+  VALIDATE_SCREENSHOT_EXTRACT = 'VALIDATE_SCREENSHOT_EXTRACT',
+  VALIDATE_SCREENSHOT_TRANSLATE = 'VALIDATE_SCREENSHOT_TRANSLATE',
+  GET_PROVIDER_CONFIG_STATUS = 'GET_PROVIDER_CONFIG_STATUS',
+}
+
+export interface MessageEnvelope<T = unknown> {
+  type: MessageType;
+  payload: T;
+}
+
+export interface MessageResponse<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: {
+    code: ErrorCode;
+    userMessage: string;
+    details?: unknown;
+  };
+}
