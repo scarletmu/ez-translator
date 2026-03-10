@@ -1,6 +1,7 @@
 import type { ProviderProfile, ProviderValidationResult } from '@/contracts';
 import { ERROR_MESSAGES, ErrorCode, normalizeError } from '@/errors';
 import { hasProfilePermission } from '@/services/permissions';
+import { buildSafeProfileDebugMeta } from './debug-profile-meta';
 import type { ChatMessage } from './fetch-chat-completion';
 import { fetchChatCompletion } from './fetch-chat-completion';
 import { assertProviderProfileReady } from './assert-provider-profile';
@@ -32,11 +33,22 @@ export async function validateProviderConnection(
   profile: ProviderProfile,
   options: ValidateProviderConnectionOptions,
 ): Promise<ProviderValidationResult> {
+  const debugMeta = {
+    stage: options.stage,
+    ...buildSafeProfileDebugMeta(profile),
+  };
+
+  console.info('[llm] Starting provider validation', debugMeta);
+
   try {
     assertProviderProfileReady(profile, options.stage);
 
     const permissionGranted = await hasProfilePermission(profile);
     if (!permissionGranted) {
+      console.warn('[llm] Provider validation blocked by missing permission', {
+        ...debugMeta,
+        permissionErrorCode: options.permissionErrorCode,
+      });
       return buildResult(
         profile,
         false,
@@ -46,9 +58,15 @@ export async function validateProviderConnection(
     }
 
     await fetchChatCompletion(profile, options.messages);
+    console.info('[llm] Provider validation succeeded', debugMeta);
     return buildResult(profile, true, true);
   } catch (error) {
     const appError = normalizeError(error);
+    console.warn('[llm] Provider validation failed', {
+      ...debugMeta,
+      errorCode: appError.code,
+      userMessage: appError.userMessage,
+    });
     return buildResult(profile, true, false, appError.userMessage);
   }
 }

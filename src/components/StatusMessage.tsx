@@ -41,6 +41,7 @@ export default function StatusMessage({ type, message, action }: StatusMessagePr
 
   return (
     <div
+      className="status-message"
       role={type === 'error' ? 'alert' : 'status'}
       style={{
         display: 'flex',
@@ -55,13 +56,21 @@ export default function StatusMessage({ type, message, action }: StatusMessagePr
         border: `1px solid ${style.border}`,
       }}
     >
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-sm)', minWidth: 0 }}>
-        <span aria-hidden="true" style={{ lineHeight: 1.2 }}>
+      <span
+        className="status-message-content"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'flex-start',
+          gap: 'var(--space-sm)',
+          minWidth: 0,
+        }}
+      >
+        <span className="status-message-icon" aria-hidden="true" style={{ lineHeight: 1.2 }}>
           {ICONS[type]}
         </span>
-        <span>{message}</span>
+        <span className="status-message-text">{message}</span>
       </span>
-      {action ? <span style={{ flexShrink: 0 }}>{action}</span> : null}
+      {action ? <span className="status-message-action" style={{ flexShrink: 0 }}>{action}</span> : null}
     </div>
   );
 }

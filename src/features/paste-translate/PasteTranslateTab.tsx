@@ -1,7 +1,6 @@
 import { useCallback, useState } from 'react';
 import type { ConfigStatus, TranslateResult } from '@/contracts';
 import { MessageType } from '@/contracts';
-import LanguageSelect from '@/components/LanguageSelect';
 import StatusMessage from '@/components/StatusMessage';
 import TranslationResultCard from '@/components/TranslationResultCard';
 import { MAX_TEXT_LENGTH } from '@/constants/limits';
@@ -9,12 +8,11 @@ import { sendMessage } from '@/services/messaging';
 
 interface PasteTranslateTabProps {
   configStatus: ConfigStatus | null;
-  defaultTargetLang: string;
+  targetLang: string;
 }
 
-export default function PasteTranslateTab({ configStatus, defaultTargetLang }: PasteTranslateTabProps) {
+export default function PasteTranslateTab({ configStatus, targetLang }: PasteTranslateTabProps) {
   const [text, setText] = useState('');
-  const [targetLang, setTargetLang] = useState(defaultTargetLang);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<TranslateResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -70,10 +68,6 @@ export default function PasteTranslateTab({ configStatus, defaultTargetLang }: P
 
   return (
     <div className="tab-panel-content">
-      <div className="form-group">
-        <LanguageSelect value={targetLang} onChange={setTargetLang} />
-      </div>
-
       <textarea
         className="translate-textarea"
         value={text}

@@ -44,12 +44,14 @@ export default function ScreenshotModeManager() {
   const [copied, setCopied] = useState(false);
   const [resultPos, setResultPos] = useState({ top: 0, left: 0 });
   const regionRef = useRef<ScreenshotRegion | null>(null);
+  const targetLangRef = useRef<string | undefined>(undefined);
 
   const dismiss = useCallback(() => {
     setState('idle');
     setResult(null);
     setError(null);
     setCopied(false);
+    targetLangRef.current = undefined;
   }, []);
 
   const showError = useCallback((code: AppErrorCode, message?: string) => {
@@ -65,10 +67,15 @@ export default function ScreenshotModeManager() {
     setState('processing');
     setError(null);
 
-    const response = await sendMessage<{ region: ScreenshotRegion; pageContext: { title: string; url: string } }, TranslateResult>(
+    const response = await sendMessage<{
+      region: ScreenshotRegion;
+      targetLang?: string;
+      pageContext: { title: string; url: string };
+    }, TranslateResult>(
       MessageType.SUBMIT_SCREENSHOT_REGION,
       {
         region,
+        targetLang: targetLangRef.current,
         pageContext: { title: document.title, url: location.href },
       },
     );
@@ -85,6 +92,7 @@ export default function ScreenshotModeManager() {
   useEffect(() => {
     const listener = (message: MessageEnvelope) => {
       if (message.type === MessageType.ENTER_SCREENSHOT_MODE) {
+        targetLangRef.current = (message.payload as { targetLang?: string } | undefined)?.targetLang;
         setState('armed');
         setResult(null);
         setError(null);

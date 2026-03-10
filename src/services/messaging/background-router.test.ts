@@ -51,7 +51,8 @@ function createDependencies(overrides: Partial<BackgroundRouterDependencies> = {
   };
 }
 
-const sender: chrome.runtime.MessageSender = { tab: { id: 12 } as chrome.tabs.Tab };
+const sender: chrome.runtime.MessageSender = { tab: { id: 12, windowId: 34 } as chrome.tabs.Tab };
+const popupSender: chrome.runtime.MessageSender = {};
 const region: ScreenshotRegion = {
   x: 0,
   y: 0,
@@ -104,8 +105,44 @@ describe('dispatchBackgroundMessage', () => {
     const response = await dispatchBackgroundMessage(message, sender, dependencies);
 
     expect(response.success).toBe(true);
-    expect(dependencies.captureVisibleTab).toHaveBeenCalled();
+    expect(dependencies.captureVisibleTab).toHaveBeenCalledWith(34);
     expect(dependencies.executeScreenshotPipeline).toHaveBeenCalled();
+  });
+
+  it('falls back to the active tab when popup sender has no tab context', async () => {
+    vi.mocked(chrome.tabs.query).mockResolvedValueOnce([{ id: 56 } as chrome.tabs.Tab]);
+    const dependencies = createDependencies();
+    const message: MessageEnvelope<{ targetLang: string }> = {
+      type: MessageType.START_SCREENSHOT_TRANSLATE,
+      payload: { targetLang: 'ja' },
+    };
+
+    const response = await dispatchBackgroundMessage(message, popupSender, dependencies);
+
+    expect(response).toEqual({ success: true, data: undefined });
+    expect(chrome.tabs.query).toHaveBeenCalledWith({ active: true, lastFocusedWindow: true });
+    expect(dependencies.sendTabMessage).toHaveBeenCalledWith(
+      56,
+      MessageType.ENTER_SCREENSHOT_MODE,
+      { targetLang: 'ja' },
+    );
+  });
+
+  it('forwards popup target language when entering screenshot mode', async () => {
+    const dependencies = createDependencies();
+    const message: MessageEnvelope<{ targetLang: string }> = {
+      type: MessageType.START_SCREENSHOT_TRANSLATE,
+      payload: { targetLang: 'ja' },
+    };
+
+    const response = await dispatchBackgroundMessage(message, sender, dependencies);
+
+    expect(response).toEqual({ success: true, data: undefined });
+    expect(dependencies.sendTabMessage).toHaveBeenCalledWith(
+      12,
+      MessageType.ENTER_SCREENSHOT_MODE,
+      { targetLang: 'ja' },
+    );
   });
 
   it('maps invalid screenshot region to standardized error', async () => {

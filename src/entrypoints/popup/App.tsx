@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import '@/styles/global.css';
 import '@/styles/popup.css';
+import LanguageSelect from '@/components/LanguageSelect';
 import { DEFAULT_TARGET_LANG } from '@/constants/languages';
 import PasteTranslateTab from '@/features/paste-translate/PasteTranslateTab';
 import ScreenshotLaunchTab from '@/features/screenshot-translate/ScreenshotLaunchTab';
 import { useConfigStatus } from '@/hooks/useConfigStatus';
+import { getDefaultTargetLang } from '@/services/storage/get-default-target-lang';
 
 type Tab = 'text' | 'screenshot';
 
@@ -30,7 +32,14 @@ function getScreenshotStatusLabel(
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('text');
+  const [targetLang, setTargetLang] = useState(DEFAULT_TARGET_LANG);
   const { configStatus, loading } = useConfigStatus();
+
+  useEffect(() => {
+    void getDefaultTargetLang()
+      .then((lang) => setTargetLang(lang))
+      .catch(() => setTargetLang(DEFAULT_TARGET_LANG));
+  }, []);
 
   const textStatusLabel = getTextStatusLabel(loading, configStatus?.textTranslateReady);
   const screenshotStatusLabel = getScreenshotStatusLabel(
@@ -42,7 +51,15 @@ export default function App() {
   return (
     <div className="popup-container">
       <div className="popup-header">
-        <h1>Edge 翻译插件</h1>
+        <div className="popup-header-main">
+          <h1>Edge 翻译插件</h1>
+          <LanguageSelect
+            value={targetLang}
+            onChange={setTargetLang}
+            className="popup-language-select"
+            ariaLabel="选择目标语言"
+          />
+        </div>
         <button
           type="button"
           className="settings-link"
@@ -89,13 +106,13 @@ export default function App() {
 
       {activeTab === 'text' ? (
         <div id="popup-panel-text" role="tabpanel" aria-labelledby="popup-tab-text">
-          <PasteTranslateTab configStatus={configStatus} defaultTargetLang={DEFAULT_TARGET_LANG} />
+          <PasteTranslateTab configStatus={configStatus} targetLang={targetLang} />
         </div>
       ) : null}
 
       {activeTab === 'screenshot' ? (
         <div id="popup-panel-screenshot" role="tabpanel" aria-labelledby="popup-tab-screenshot">
-          <ScreenshotLaunchTab configStatus={configStatus} />
+          <ScreenshotLaunchTab configStatus={configStatus} targetLang={targetLang} />
         </div>
       ) : null}
     </div>

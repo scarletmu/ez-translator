@@ -102,6 +102,19 @@ function ensureValidTextPayload(text: string): void {
   }
 }
 
+async function resolveTargetTab(sender: chrome.runtime.MessageSender): Promise<chrome.tabs.Tab & { id: number }> {
+  if (sender.tab?.id != null) {
+    return sender.tab as chrome.tabs.Tab & { id: number };
+  }
+
+  const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  if (activeTab?.id == null) {
+    throw new AppError(ErrorCode.SCREENSHOT_CAPTURE_FAILED);
+  }
+
+  return activeTab as chrome.tabs.Tab & { id: number };
+}
+
 async function handleTranslateText(
   deps: BackgroundRouterDependencies,
   payload: { text: string; targetLang?: string; pageContext?: { title: string; url: string } },
@@ -132,6 +145,7 @@ async function handleTranslateText(
 
 async function handleStartScreenshotTranslate(
   deps: BackgroundRouterDependencies,
+  payload: { targetLang?: string },
   sender: chrome.runtime.MessageSender,
 ): Promise<MessageResponse<void>> {
   const textConfig = await deps.getTextTranslateConfig();
@@ -163,18 +177,18 @@ async function handleStartScreenshotTranslate(
     );
   }
 
-  const tabId = sender.tab?.id;
-  if (tabId == null) {
-    throw new AppError(ErrorCode.SCREENSHOT_CAPTURE_FAILED);
-  }
+  const targetTab = await resolveTargetTab(sender);
 
-  await deps.sendTabMessage(tabId, MessageType.ENTER_SCREENSHOT_MODE, {});
+  await deps.sendTabMessage(targetTab.id, MessageType.ENTER_SCREENSHOT_MODE, {
+    targetLang: payload.targetLang,
+  });
   return wrapResponse(undefined);
 }
 
 async function handleSubmitScreenshotRegion(
   deps: BackgroundRouterDependencies,
   payload: { region: ScreenshotRegion; targetLang?: string; pageContext?: { title: string; url: string } },
+  sender: chrome.runtime.MessageSender,
 ): Promise<MessageResponse<TranslateResult>> {
   ensureValidScreenshotRegion(payload.region);
 
@@ -207,7 +221,8 @@ async function handleSubmitScreenshotRegion(
     );
   }
 
-  const fullDataUrl = await deps.captureVisibleTab();
+  const targetTab = await resolveTargetTab(sender);
+  const fullDataUrl = await deps.captureVisibleTab(targetTab.windowId);
   const { base64, mimeType } = await deps.cropImage(fullDataUrl, payload.region);
   const targetLang = payload.targetLang || await deps.getDefaultTargetLang();
   const result = await deps.executeScreenshotPipeline(
@@ -258,6 +273,11 @@ export async function dispatchBackgroundMessage(
   sender: chrome.runtime.MessageSender,
   deps: BackgroundRouterDependencies = defaultDependencies,
 ): Promise<MessageResponse<unknown>> {
+  console.info('[background] Received runtime message', {
+    type: message.type,
+    tabId: sender.tab?.id ?? null,
+  });
+
   try {
     switch (message.type) {
       case MessageType.TRANSLATE_SELECTION:
@@ -273,11 +293,16 @@ export async function dispatchBackgroundMessage(
           'paste',
         );
       case MessageType.START_SCREENSHOT_TRANSLATE:
-        return await handleStartScreenshotTranslate(deps, sender);
+        return await handleStartScreenshotTranslate(
+          deps,
+          message.payload as { targetLang?: string },
+          sender,
+        );
       case MessageType.SUBMIT_SCREENSHOT_REGION:
         return await handleSubmitScreenshotRegion(
           deps,
           message.payload as { region: ScreenshotRegion; targetLang?: string; pageContext?: { title: string; url: string } },
+          sender,
         );
       case MessageType.VALIDATE_TEXT_TRANSLATE:
         return await handleValidation(deps, 'text');
@@ -293,13 +318,21 @@ export async function dispatchBackgroundMessage(
         throw new AppError(ErrorCode.INVALID_INPUT);
     }
   } catch (error) {
-    return wrapError(error);
+    const appError = normalizeError(error);
+    console.warn('[background] Runtime message failed', {
+      type: message.type,
+      code: appError.code,
+      userMessage: appError.userMessage,
+    });
+    return wrapError(appError);
   }
 }
 
 export function registerBackgroundMessageHandler(
   deps: BackgroundRouterDependencies = defaultDependencies,
 ): void {
+  console.info('[background] Registering runtime message handler');
+
   chrome.runtime.onMessage.addListener((message: MessageEnvelope, sender, sendResponse) => {
     void dispatchBackgroundMessage(message, sender, deps).then(sendResponse);
     return true;

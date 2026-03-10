@@ -94,6 +94,7 @@ beforeEach(() => {
 
   const tabs = {
     captureVisibleTab: vi.fn(async () => 'data:image/png;base64,Zm9v'),
+    query: vi.fn(async () => []),
     sendMessage: vi.fn(async () => undefined),
   } as unknown as typeof chrome.tabs;
 

@@ -19,7 +19,7 @@ const DEFAULT_PROFILE: ProviderProfile = {
   model: '',
 };
 
-const DEFAULT_CONFIG: ScreenshotTranslateConfig = {
+export const DEFAULT_SCREENSHOT_TRANSLATE_CONFIG: ScreenshotTranslateConfig = {
   mode: 'direct_multimodal',
   direct: { source: 'reuse_text_translate' },
   extract: {},
@@ -50,13 +50,13 @@ export default function ScreenshotTranslateSection({
   initialConfig,
   onChange,
 }: ScreenshotTranslateSectionProps) {
-  const [config, setConfig] = useState<ScreenshotTranslateConfig>(initialConfig || DEFAULT_CONFIG);
+  const [config, setConfig] = useState<ScreenshotTranslateConfig>(
+    initialConfig || DEFAULT_SCREENSHOT_TRANSLATE_CONFIG,
+  );
   const [permissions, setPermissions] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    if (initialConfig) {
-      setConfig(initialConfig);
-    }
+    setConfig(initialConfig || DEFAULT_SCREENSHOT_TRANSLATE_CONFIG);
   }, [initialConfig]);
 
   const update = (partial: Partial<ScreenshotTranslateConfig>) => {

@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { ProviderProfile, ScreenshotTranslateConfig } from '@/contracts';
 import StatusMessage from '@/components/StatusMessage';
 import { ErrorCode, normalizeError } from '@/errors';
@@ -7,7 +7,7 @@ import { setDefaultTargetLang } from '@/services/storage/set-default-target-lang
 import { setScreenshotTranslateConfig } from '@/services/storage/set-screenshot-translate-config';
 import { setTextTranslateConfig } from '@/services/storage/set-text-translate-config';
 import DefaultLanguageSection from './DefaultLanguageSection';
-import ScreenshotTranslateSection from './ScreenshotTranslateSection';
+import ScreenshotTranslateSection, { DEFAULT_SCREENSHOT_TRANSLATE_CONFIG } from './ScreenshotTranslateSection';
 import StorageInfoSection from './StorageInfoSection';
 import TextTranslateSection from './TextTranslateSection';
 
@@ -15,12 +15,16 @@ export default function SettingsPage() {
   const { textConfig, screenshotConfig, defaultTargetLang, loading, reload } = useStorageConfig();
 
   const [textProfile, setTextProfile] = useState<ProviderProfile | null>(null);
-  const [screenshotCfg, setScreenshotCfg] = useState<ScreenshotTranslateConfig | null>(null);
+  const [screenshotCfg, setScreenshotCfg] = useState<ScreenshotTranslateConfig>(DEFAULT_SCREENSHOT_TRANSLATE_CONFIG);
   const [targetLang, setTargetLang] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const effectiveTargetLang = targetLang ?? defaultTargetLang;
+
+  useEffect(() => {
+    setScreenshotCfg(screenshotConfig ?? DEFAULT_SCREENSHOT_TRANSLATE_CONFIG);
+  }, [screenshotConfig]);
 
   const handleSave = useCallback(async () => {
     setSaving(true);
@@ -32,10 +36,7 @@ export default function SettingsPage() {
         await setTextTranslateConfig({ profile: profileToSave });
       }
 
-      const screenshotToSave = screenshotCfg ?? screenshotConfig;
-      if (screenshotToSave) {
-        await setScreenshotTranslateConfig(screenshotToSave);
-      }
+      await setScreenshotTranslateConfig(screenshotCfg);
 
       await setDefaultTargetLang(effectiveTargetLang);
 
@@ -50,7 +51,7 @@ export default function SettingsPage() {
     } finally {
       setSaving(false);
     }
-  }, [effectiveTargetLang, reload, screenshotCfg, screenshotConfig, textConfig, textProfile]);
+  }, [effectiveTargetLang, reload, screenshotCfg, textConfig, textProfile]);
 
   if (loading) {
     return (
@@ -67,7 +68,7 @@ export default function SettingsPage() {
 
       <TextTranslateSection initialProfile={textConfig?.profile ?? null} onChange={setTextProfile} />
 
-      <ScreenshotTranslateSection initialConfig={screenshotConfig} onChange={setScreenshotCfg} />
+      <ScreenshotTranslateSection initialConfig={screenshotCfg} onChange={setScreenshotCfg} />
 
       <DefaultLanguageSection value={effectiveTargetLang} onChange={setTargetLang} />
 

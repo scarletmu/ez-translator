@@ -8,9 +8,10 @@ import { sendMessage } from '@/services/messaging';
 
 interface ScreenshotLaunchTabProps {
   configStatus: ConfigStatus | null;
+  targetLang: string;
 }
 
-export default function ScreenshotLaunchTab({ configStatus }: ScreenshotLaunchTabProps) {
+export default function ScreenshotLaunchTab({ configStatus, targetLang }: ScreenshotLaunchTabProps) {
   const [launching, setLaunching] = useState(false);
   const [launchError, setLaunchError] = useState<{ code?: ErrorCode; message: string } | null>(null);
 
@@ -21,7 +22,7 @@ export default function ScreenshotLaunchTab({ configStatus }: ScreenshotLaunchTa
     setLaunching(true);
     setLaunchError(null);
 
-    const response = await sendMessage(MessageType.START_SCREENSHOT_TRANSLATE, {});
+    const response = await sendMessage<{ targetLang: string }, void>(MessageType.START_SCREENSHOT_TRANSLATE, { targetLang });
     if (response.success) {
       setTimeout(() => window.close(), 300);
       return;
@@ -32,7 +33,7 @@ export default function ScreenshotLaunchTab({ configStatus }: ScreenshotLaunchTa
       message: response.error?.userMessage || '启动截图翻译失败，请稍后重试',
     });
     setLaunching(false);
-  }, []);
+  }, [targetLang]);
 
   if (!isReady) {
     return (

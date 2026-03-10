@@ -1,5 +1,6 @@
 import type { ProviderProfile } from '@/contracts';
 import { AppError, ErrorCode } from '@/errors';
+import { buildSafeProfileDebugMeta } from './debug-profile-meta';
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -52,8 +53,18 @@ export async function fetchChatCompletion(
 ): Promise<unknown> {
   const url = `${profile.baseUrl}/chat/completions`;
   const hasImageInput = includesImageContent(messages);
+  const requestMeta = {
+    ...buildSafeProfileDebugMeta(profile),
+    requestUrl: url,
+    hasImageInput,
+    messageCount: messages.length,
+    timeoutMs: REQUEST_TIMEOUT_MS,
+  };
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let responseStatus: number | null = null;
+
+  console.info('[llm] Sending chat completion request', requestMeta);
 
   try {
     const response = await fetch(url, {
@@ -68,6 +79,8 @@ export async function fetchChatCompletion(
       }),
       signal: controller.signal,
     });
+
+    responseStatus = response.status;
 
     if (!response.ok) {
       const errorBody = await readErrorBody(response);
@@ -88,19 +101,36 @@ export async function fetchChatCompletion(
     }
 
     try {
-      return await response.json();
+      const payload = await response.json();
+      console.info('[llm] Chat completion request succeeded', {
+        ...requestMeta,
+        status: response.status,
+      });
+      return payload;
     } catch {
       throw new AppError(ErrorCode.UPSTREAM_BAD_RESPONSE);
     }
   } catch (error) {
     if (error instanceof AppError) {
+      console.warn('[llm] Chat completion request failed', {
+        ...requestMeta,
+        status: responseStatus,
+        errorCode: error.code,
+        userMessage: error.userMessage,
+      });
       throw error;
     }
 
     if (error instanceof DOMException && error.name === 'AbortError') {
+      console.warn('[llm] Chat completion request timed out', requestMeta);
       throw new AppError(ErrorCode.UPSTREAM_TIMEOUT);
     }
 
+    console.error('[llm] Chat completion request hit network error', {
+      ...requestMeta,
+      errorName: error instanceof Error ? error.name : 'UnknownError',
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
     throw new AppError(ErrorCode.NETWORK_ERROR);
   } finally {
     clearTimeout(timeoutId);
