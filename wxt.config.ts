@@ -3,6 +3,7 @@ import { defineConfig } from 'wxt';
 export default defineConfig({
   browser: 'edge',
   srcDir: 'src',
+  outDir: 'output',
   modules: ['@wxt-dev/module-react'],
   runner: {
     binaries: {

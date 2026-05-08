@@ -35,7 +35,7 @@ pnpm install
 pnpm dev
 ```
 
-启动后 WXT 会在 `.output/chrome-mv3` 输出扩展产物。打开 Edge，进入 `edge://extensions/`，开启"开发者模式"，点击"加载解压缩的扩展"，选择 `.output/chrome-mv3` 目录即可加载插件。
+启动后 WXT 会在 `output/chrome-mv3` 输出扩展产物。打开 Edge，进入 `edge://extensions/`，开启"开发者模式"，点击"加载解压缩的扩展"，选择 `output/chrome-mv3` 目录即可加载插件。
 
 ### 构建生产版本
 
@@ -43,7 +43,7 @@ pnpm dev
 pnpm build
 ```
 
-产物同样输出到 `.output/chrome-mv3`。
+产物同样输出到 `output/chrome-mv3`。
 
 ### 类型检查
 

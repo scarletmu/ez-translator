@@ -24,7 +24,7 @@ npx pnpm@9 install
 npx pnpm@9 dev
 ```
 
-构建产物输出到 `.output/chrome-mv3`。在 Edge 中打开 `edge://extensions/`，启用“开发者模式”后加载该目录即可。
+构建产物输出到 `output/chrome-mv3`。在 Edge 中打开 `edge://extensions/`，启用“开发者模式”后加载该目录即可。
 
 ### 3.2 启动 Firefox 开发模式
 

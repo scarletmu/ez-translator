@@ -34,6 +34,27 @@ export default function SelectionTranslateManager() {
   const [error, setError] = useState<{ code?: ErrorCode; message: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
+  const selectionTimerRef = useRef<number | null>(null);
+
+  const syncSelectionTrigger = useCallback(() => {
+    if (selectionTimerRef.current !== null) {
+      window.clearTimeout(selectionTimerRef.current);
+    }
+
+    selectionTimerRef.current = window.setTimeout(() => {
+      selectionTimerRef.current = null;
+
+      const selection = getSelectionRect();
+      if (!selection) {
+        setState((currentState) => (currentState === 'trigger' ? 'hidden' : currentState));
+        return;
+      }
+
+      setSelectedText(selection.text);
+      setPosition(positionNearRect(selection.rect, { width: 72, height: 32 }));
+      setState('trigger');
+    }, 10);
+  }, []);
 
   const dismiss = useCallback(() => {
     setState('hidden');
@@ -90,20 +111,6 @@ export default function SelectionTranslateManager() {
   }, [result]);
 
   useEffect(() => {
-    const onMouseUp = () => {
-      setTimeout(() => {
-        const selection = getSelectionRect();
-        if (!selection) {
-          setState((currentState) => (currentState === 'trigger' ? 'hidden' : currentState));
-          return;
-        }
-
-        setSelectedText(selection.text);
-        setPosition(positionNearRect(selection.rect, { width: 72, height: 32 }));
-        setState('trigger');
-      }, 10);
-    };
-
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         dismiss();
@@ -125,16 +132,27 @@ export default function SelectionTranslateManager() {
       }
     };
 
-    document.addEventListener('mouseup', onMouseUp);
+    const onSelectionChange = () => {
+      syncSelectionTrigger();
+    };
+
+    document.addEventListener('mouseup', syncSelectionTrigger);
+    document.addEventListener('selectionchange', onSelectionChange);
     document.addEventListener('keydown', onKeyDown);
     document.addEventListener('mousedown', onMouseDown);
 
     return () => {
-      document.removeEventListener('mouseup', onMouseUp);
+      document.removeEventListener('mouseup', syncSelectionTrigger);
+      document.removeEventListener('selectionchange', onSelectionChange);
       document.removeEventListener('keydown', onKeyDown);
       document.removeEventListener('mousedown', onMouseDown);
+
+      if (selectionTimerRef.current !== null) {
+        window.clearTimeout(selectionTimerRef.current);
+        selectionTimerRef.current = null;
+      }
     };
-  }, [dismiss, state]);
+  }, [dismiss, state, syncSelectionTrigger]);
 
   if (state === 'hidden') {
     return null;
