@@ -1,10 +1,10 @@
-# Edge 翻译插件架构设计
+# EZ Translator 架构设计
 
 ## 1. 项目目标
 
 ### 1.1 背景
 
-本项目目标是设计一个运行在 Edge 浏览器中的翻译插件，覆盖三个核心使用场景：
+本项目目标是设计一个运行在 Edge/Chromium 浏览器中的翻译扩展，覆盖三个核心使用场景：
 
 1. 用户在网页中选中文本后，能够快速触发翻译并在当前页面附近查看结果。
 2. 用户在网页中遇到不可复制、不可选中的内容时，能够通过截图框选区域并直接调用视觉 LLM 完成翻译。
@@ -16,7 +16,7 @@
 
 MVP 交付完成时，应满足以下标准：
 
-- 在 Edge 中加载插件后，用户可以对普通网页文本执行选区翻译。
+- 在 Edge/Chromium 中加载扩展后，用户可以对普通网页文本执行选区翻译。
 - 用户可以通过截图框选当前可见页面区域并完成视觉翻译。
 - 用户可以在插件弹窗中粘贴文本并执行翻译。
 - 用户可以在插件设置页中配置文本翻译逻辑与截图翻译逻辑：既支持一个多模态模型统一完成，也支持截图提取与截图翻译分阶段分别指定模型。
@@ -64,7 +64,7 @@ MVP 交付完成时，应满足以下标准：
 
 ```text
 +----------------------------------+
-| Edge Extension                   |
+| Browser Extension                |
 | - Content Script                 |
 | - Background / Service Worker    |
 | - Popup                          |
@@ -125,6 +125,7 @@ MVP 交付完成时，应满足以下标准：
 - 监听选区变化。
 - 判断当前页面是否存在有效选区。
 - 在选区附近显示可点击的“翻译”触发按钮。
+- 接收 `background` 通过 `TRIGGER_SELECTION_TRANSLATE` 转发的右键菜单触发，复用同一条翻译流程。
 - 进入截图框选模式时挂载全屏遮罩层。
 - 采集截图框选矩形坐标并发送给 `background`。
 - 接收 `background` 返回的翻译结果。
@@ -142,6 +143,7 @@ MVP 交付完成时，应满足以下标准：
 `background` 是插件内部中枢，负责把多个入口统一接到同一套业务服务上：
 
 - 接收来自 `content script`、`popup`、`options` 的消息。
+- 注册“翻译选中文本”浏览器右键菜单（`contexts: ['selection']`），并在点击时把选中文本通过 `TRIGGER_SELECTION_TRANSLATE` 转发给对应标签页的 content script。
 - 统一读取 `chrome.storage.local` 中的供应商配置。
 - 统一调用文本翻译、视觉翻译、连接验证逻辑。
 - 统一处理网络异常与错误码映射。
@@ -236,6 +238,7 @@ MVP 主要模块：
 - `capture`
 - `storage`
 - `permissions`
+- `context-menu`
 
 ### 5.2 Provider Client
 
@@ -319,6 +322,7 @@ MVP 主要模块：
 #### 消息契约
 
 - `TRANSLATE_SELECTION`
+- `TRIGGER_SELECTION_TRANSLATE`
 - `TRANSLATE_PASTE`
 - `START_SCREENSHOT_TRANSLATE`
 - `SUBMIT_SCREENSHOT_REGION`
@@ -337,8 +341,12 @@ MVP 主要模块：
 用户选中文本
   -> content script 监听到有效选区
   -> 页面出现“翻译”触发按钮
-  -> 用户点击按钮
-  -> content script 发送消息给 background
+  -> 用户点击按钮或在系统右键菜单中选择“翻译选中文本”
+     · 按钮路径：content script 直接发送 TRANSLATE_SELECTION
+     · 右键路径：background 监听 contextMenus.onClicked
+       -> background 通过 TRIGGER_SELECTION_TRANSLATE 通知当前页面
+       -> content script 复用与按钮相同的翻译流程
+  -> content script 发送 TRANSLATE_SELECTION 给 background
   -> background 读取本地供应商配置
   -> background 通过 provider client 请求文本模型
   -> background 返回标准化翻译结果
@@ -465,7 +473,8 @@ MVP 主要模块：
 │  │  ├─ storage/
 │  │  ├─ dom/
 │  │  ├─ capture/
-│  │  └─ permissions/
+│  │  ├─ permissions/
+│  │  └─ context-menu/
 │  ├─ contracts/
 │  ├─ schemas/
 │  ├─ constants/
@@ -485,6 +494,7 @@ MVP 主要模块：
 - `src/services/llm/`：供应商抽象和模型调用。
 - `src/services/storage/`：本地配置读写。
 - `src/services/permissions/`：host 权限请求与状态判断。
+- `src/services/context-menu/`：注册“翻译选中文本”右键菜单，并将点击事件转发到当前页面的 content script。
 - `src/contracts/`、`src/schemas/`、`src/errors/`：扩展内部统一契约。
 
 ## 10. 架构决策
@@ -713,6 +723,6 @@ MVP 主要模块：
 ## 17. Assumptions
 
 - MVP 业务代码已完成实现，涵盖三项核心功能。
-- 插件运行在 Edge 浏览器扩展环境中。
+- 扩展运行在 Edge/Chromium 浏览器扩展环境中。
 - 用户愿意在浏览器扩展中本地保存 API Key。
 - 默认采用 OpenAI-compatible 供应商接口设计。

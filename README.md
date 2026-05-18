@@ -1,6 +1,6 @@
-# Edge 翻译插件
+# EZ Translator
 
-一个运行在 Edge（Chromium）浏览器中的 AI 翻译扩展，支持网页选区翻译、截图区域翻译和粘贴翻译。插件直连 OpenAI 兼容的 LLM 供应商，无需额外后端服务。
+一个运行在 Edge/Chromium 浏览器中的 AI 翻译扩展，支持网页选区翻译、截图区域翻译和粘贴翻译。扩展直连 OpenAI 兼容的 LLM 供应商，无需额外后端服务。
 
 ## 功能概览
 

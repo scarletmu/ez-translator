@@ -90,6 +90,7 @@ npx pnpm@9 test:watch
 
 ## 7. 常见注意事项
 
+- 静态资源放在根目录 `public/`；`wxt.config.ts` 通过 `publicDir: '../public'` 保持 WXT 构建输出与仓库约定的 `public/icon/` 一致。图标源文件可保留为 `public/icon/source.png`，构建时只发布 `16.png`、`48.png`、`128.png`。
 - 本项目使用 `chrome.storage.local` 保存配置，不使用 `chrome.storage.sync` 保存 API Key。
 - 所有供应商请求必须经由 `background` 与 `src/services/llm` 发起。
 - `content script` 不直接访问 API Key。

@@ -52,7 +52,7 @@ export default function App() {
     <div className="popup-container">
       <div className="popup-header">
         <div className="popup-header-main">
-          <h1>Edge 翻译插件</h1>
+          <h1>EZ Translator</h1>
           <LanguageSelect
             value={targetLang}
             onChange={setTargetLang}

@@ -5,7 +5,7 @@ import ScreenshotModeManager from '@/features/screenshot-translate/ScreenshotMod
 export default defineContentScript({
   matches: ['<all_urls>'],
   main() {
-    const hostId = 'edge-translator-root';
+    const hostId = 'ez-translator-root';
 
     // Remove existing host if any (e.g. on HMR)
     const existing = document.getElementById(hostId);

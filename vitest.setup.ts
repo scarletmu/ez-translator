@@ -72,7 +72,14 @@ beforeEach(() => {
     sendMessage: vi.fn(),
     openOptionsPage: vi.fn(),
     onMessage,
+    onInstalled: { addListener: vi.fn(), removeListener: vi.fn() },
   } as unknown as typeof chrome.runtime;
+
+  const contextMenus = {
+    create: vi.fn(),
+    removeAll: vi.fn((callback?: () => void) => callback?.()),
+    onClicked: { addListener: vi.fn(), removeListener: vi.fn() },
+  } as unknown as typeof chrome.contextMenus;
 
   const permissions = {
     contains: vi.fn(async () => true),
@@ -112,6 +119,7 @@ beforeEach(() => {
       },
       tabs,
       windows,
+      contextMenus,
     } as unknown as typeof chrome,
   });
 

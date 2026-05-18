@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import TranslationOverlayCard from '@/components/TranslationOverlayCard';
 import { MessageType } from '@/contracts';
-import type { TranslateResult } from '@/contracts';
+import type { MessageEnvelope, TranslateResult } from '@/contracts';
 import { getErrorAction } from '@/errors';
 import type { ErrorCode } from '@/errors';
 import { getSelectionRect } from '@/services/dom/get-selection-rect';
@@ -10,6 +10,10 @@ import { positionNearRect } from '@/services/dom/position-near-rect';
 import { sendMessage } from '@/services/messaging';
 
 type OverlayState = 'hidden' | 'trigger' | 'loading' | 'success' | 'error';
+type OverlayPosition = { top: number; left: number };
+
+const TRIGGER_BUTTON_SIZE = { width: 72, height: 32 };
+const OVERLAY_FALLBACK_SIZE = { width: 320, height: 160 };
 
 const triggerButtonStyle: CSSProperties = {
   position: 'absolute',
@@ -26,9 +30,17 @@ const triggerButtonStyle: CSSProperties = {
   whiteSpace: 'nowrap',
 };
 
+function resolveOverlayPosition(): OverlayPosition {
+  const selection = getSelectionRect();
+  if (selection) {
+    return positionNearRect(selection.rect, OVERLAY_FALLBACK_SIZE);
+  }
+  return { top: window.scrollY + 80, left: window.scrollX + 80 };
+}
+
 export default function SelectionTranslateManager() {
   const [state, setState] = useState<OverlayState>('hidden');
-  const [position, setPosition] = useState({ top: 0, left: 0 });
+  const [position, setPosition] = useState<OverlayPosition>({ top: 0, left: 0 });
   const [selectedText, setSelectedText] = useState('');
   const [result, setResult] = useState<TranslateResult | null>(null);
   const [error, setError] = useState<{ code?: ErrorCode; message: string } | null>(null);
@@ -51,7 +63,7 @@ export default function SelectionTranslateManager() {
       }
 
       setSelectedText(selection.text);
-      setPosition(positionNearRect(selection.rect, { width: 72, height: 32 }));
+      setPosition(positionNearRect(selection.rect, TRIGGER_BUTTON_SIZE));
       setState('trigger');
     }, 10);
   }, []);
@@ -63,18 +75,21 @@ export default function SelectionTranslateManager() {
     setCopied(false);
   }, []);
 
-  const handleTranslate = useCallback(async () => {
-    if (!selectedText.trim()) {
-      return;
-    }
+  const runTranslate = useCallback(async (text: string, overlayPosition: OverlayPosition) => {
+    const normalized = text.trim();
+    if (!normalized) return;
 
+    setSelectedText(normalized);
+    setPosition(overlayPosition);
     setState('loading');
     setError(null);
+    setResult(null);
+    setCopied(false);
 
     const pageContext = { title: document.title, url: location.href };
     const response = await sendMessage<{ text: string; pageContext: { title: string; url: string } }, TranslateResult>(
       MessageType.TRANSLATE_SELECTION,
-      { text: selectedText, pageContext },
+      { text: normalized, pageContext },
     );
 
     if (response.success && response.data) {
@@ -88,7 +103,11 @@ export default function SelectionTranslateManager() {
       message: response.error?.userMessage || '翻译失败，请稍后重试',
     });
     setState('error');
-  }, [selectedText]);
+  }, []);
+
+  const handleTranslate = useCallback(() => {
+    void runTranslate(selectedText, position);
+  }, [runTranslate, selectedText, position]);
 
   const handleErrorAction = useCallback(() => {
     const action = getErrorAction(error?.code);
@@ -97,7 +116,7 @@ export default function SelectionTranslateManager() {
       return;
     }
 
-    void handleTranslate();
+    handleTranslate();
   }, [error?.code, handleTranslate]);
 
   const handleCopy = useCallback(async () => {
@@ -153,6 +172,20 @@ export default function SelectionTranslateManager() {
       }
     };
   }, [dismiss, state, syncSelectionTrigger]);
+
+  useEffect(() => {
+    const listener = (message: MessageEnvelope) => {
+      if (message.type !== MessageType.TRIGGER_SELECTION_TRANSLATE) return;
+      const payload = message.payload as { text?: string } | undefined;
+      const text = payload?.text?.trim();
+      if (!text) return;
+
+      void runTranslate(text, resolveOverlayPosition());
+    };
+
+    chrome.runtime.onMessage.addListener(listener);
+    return () => chrome.runtime.onMessage.removeListener(listener);
+  }, [runTranslate]);
 
   if (state === 'hidden') {
     return null;
