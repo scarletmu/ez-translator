@@ -36,5 +36,11 @@ export default defineConfig({
     },
     permissions: ['storage', 'activeTab', 'contextMenus'],
     optional_host_permissions: ['https://*/*', 'http://*/*'],
+    web_accessible_resources: [
+      {
+        resources: ['icon/16.png', 'icon/48.png', 'icon/128.png'],
+        matches: ['<all_urls>'],
+      },
+    ],
   },
 });

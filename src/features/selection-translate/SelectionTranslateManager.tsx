@@ -12,22 +12,33 @@ import { sendMessage } from '@/services/messaging';
 type OverlayState = 'hidden' | 'trigger' | 'loading' | 'success' | 'error';
 type OverlayPosition = { top: number; left: number };
 
-const TRIGGER_BUTTON_SIZE = { width: 72, height: 32 };
+const TRIGGER_BUTTON_SIZE = { width: 32, height: 32 };
 const OVERLAY_FALLBACK_SIZE = { width: 320, height: 160 };
+
+const triggerIconUrl = chrome.runtime.getURL('icon/48.png');
 
 const triggerButtonStyle: CSSProperties = {
   position: 'absolute',
   zIndex: 2147483647,
-  background: '#4a90d9',
-  color: '#fff',
-  border: 'none',
-  borderRadius: 4,
-  padding: '4px 10px',
-  fontSize: 13,
-  fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+  width: TRIGGER_BUTTON_SIZE.width,
+  height: TRIGGER_BUTTON_SIZE.height,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background: '#fff',
+  border: '1px solid rgba(0,0,0,0.08)',
+  borderRadius: '50%',
+  padding: 0,
   cursor: 'pointer',
-  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-  whiteSpace: 'nowrap',
+  boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
+  transition: 'transform 0.12s ease, box-shadow 0.12s ease',
+};
+
+const triggerIconStyle: CSSProperties = {
+  width: 20,
+  height: 20,
+  display: 'block',
+  pointerEvents: 'none',
 };
 
 function resolveOverlayPosition(): OverlayPosition {
@@ -197,10 +208,20 @@ export default function SelectionTranslateManager() {
         <button
           type="button"
           className="translator-trigger-btn"
+          title="翻译选中文本"
+          aria-label="翻译选中文本"
           style={{ ...triggerButtonStyle, top: position.top, left: position.left }}
           onClick={() => void handleTranslate()}
+          onMouseEnter={(event) => {
+            event.currentTarget.style.transform = 'scale(1.08)';
+            event.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.22)';
+          }}
+          onMouseLeave={(event) => {
+            event.currentTarget.style.transform = 'scale(1)';
+            event.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.18)';
+          }}
         >
-          翻译
+          <img className="translator-trigger-btn" src={triggerIconUrl} alt="" style={triggerIconStyle} />
         </button>
       ) : null}
 
